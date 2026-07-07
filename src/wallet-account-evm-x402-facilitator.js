@@ -121,9 +121,15 @@ export default class WalletAccountEvmX402Facilitator {
    * @returns {Promise<`0x${string}`>} The transaction hash.
    */
   async writeContract ({ address, abi, functionName, args }) {
-    const contract = new Contract(address, abi, this._adaptee._account)
-    const tx = await contract[functionName](...args)
-    return tx.hash
+  const { Interface } = await import('ethers')
+  const iface = new Interface(abi)
+
+  // Circle USDC overloads transferWithAuthorization; disambiguate by full signature.
+  const fragment = iface.getFunction(functionName, args) ?? functionName
+  const data = iface.encodeFunctionData(fragment, args)
+
+  const { hash } = await this._adaptee.sendTransaction({ to: address, value: 0, data })
+  return hash
   }
 
   /**
